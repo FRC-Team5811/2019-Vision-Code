@@ -161,4 +161,4 @@ while True:
     pipe.process(img)
     blobs = pipe.find_blobs_output
     for b in blobs:
-        print(b)
+        points2f = cv2.KeyPoint_convert(b)
