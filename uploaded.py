@@ -73,7 +73,8 @@ class GripPipeline:
         # Step Find_Blobs0:
         self.__find_blobs_input = self.mask_output
         (self.find_blobs_output) = self.__find_blobs(self.__find_blobs_input, self.__find_blobs_min_area, self.__find_blobs_circularity, self.__find_blobs_dark_blobs)
-        print("refresh")
+        print("test")
+        print(self.find_blobs_output)
 
     @staticmethod
     def __resize_image(input, width, height, interpolation):
@@ -158,7 +159,6 @@ class GripPipeline:
 
 t = GripPipeline()
 cap = cv2.VideoCapture(0)
-ret_val, img = cap.read()
-
 while True:
+    ret_val, img = cap.read()
     t.process(img)
