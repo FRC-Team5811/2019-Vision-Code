@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import cv2
 import numpy
 import math
@@ -21,9 +19,9 @@ class GripPipeline:
         self.resize_image_output = None
 
         self.__hsv_threshold_input = self.resize_image_output
-        self.__hsv_threshold_hue = [8.093525179856115, 44.006791171477076]
-        self.__hsv_threshold_saturation = [169.69424460431657, 255.0]
-        self.__hsv_threshold_value = [222.43705035971223, 255.0]
+        self.__hsv_threshold_hue = [51.798561151079134, 91.37521222410867]
+        self.__hsv_threshold_saturation = [158.22841726618705, 255.0]
+        self.__hsv_threshold_value = [100.89928057553959, 255.0]
 
         self.hsv_threshold_output = None
 
@@ -36,18 +34,10 @@ class GripPipeline:
 
         self.cv_erode_output = None
 
-        self.__mask_input = self.resize_image_output
-        self.__mask_mask = self.cv_erode_output
+        self.__find_contours_input = self.cv_erode_output
+        self.__find_contours_external_only = True
 
-        self.mask_output = None
-
-        self.__find_blobs_input = self.mask_output
-        self.__find_blobs_min_area = 180.0
-        self.__find_blobs_circularity = [0.0, 1.0]
-        self.__find_blobs_dark_blobs = False
-
-        self.find_blobs_output = None
-
+        self.find_contours_output = None
 
     def process(self, source0):
         """
@@ -65,14 +55,10 @@ class GripPipeline:
         self.__cv_erode_src = self.hsv_threshold_output
         (self.cv_erode_output) = self.__cv_erode(self.__cv_erode_src, self.__cv_erode_kernel, self.__cv_erode_anchor, self.__cv_erode_iterations, self.__cv_erode_bordertype, self.__cv_erode_bordervalue)
 
-        # Step Mask0:
-        self.__mask_input = self.resize_image_output
-        self.__mask_mask = self.cv_erode_output
-        (self.mask_output) = self.__mask(self.__mask_input, self.__mask_mask)
+        # Step Find_Contours0:
+        self.__find_contours_input = self.cv_erode_output
+        (self.find_contours_output) = self.__find_contours(self.__find_contours_input, self.__find_contours_external_only)
 
-        # Step Find_Blobs0:
-        self.__find_blobs_input = self.mask_output
-        (self.find_blobs_output) = self.__find_blobs(self.__find_blobs_input, self.__find_blobs_min_area, self.__find_blobs_circularity, self.__find_blobs_dark_blobs)
 
     @staticmethod
     def __resize_image(input, width, height, interpolation):
@@ -117,51 +103,21 @@ class GripPipeline:
                             borderType = border_type, borderValue = border_value)
 
     @staticmethod
-    def __mask(input, mask):
-        """Filter out an area of an image using a binary mask.
-        Args:
-            input: A three channel numpy.ndarray.
-            mask: A black and white numpy.ndarray.
-        Returns:
-            A three channel numpy.ndarray.
-        """
-        return cv2.bitwise_and(input, input, mask=mask)
-
-    @staticmethod
-    def __find_blobs(input, min_area, circularity, dark_blobs):
-        """Detects groups of pixels in an image.
+    def __find_contours(input, external_only):
+        """Sets the values of pixels in a binary image to their distance to the nearest black pixel.
         Args:
             input: A numpy.ndarray.
-            min_area: The minimum blob size to be found.
-            circularity: The min and max circularity as a list of two numbers.
-            dark_blobs: A boolean. If true looks for black. Otherwise it looks for white.
-        Returns:
-            A list of KeyPoint.
+            external_only: A boolean. If true only external contours are found.
+        Return:
+            A list of numpy.ndarray where each one represents a contour.
         """
-        params = cv2.SimpleBlobDetector_Params()
-        params.filterByColor = 1
-        params.blobColor = (0 if dark_blobs else 255)
-        params.minThreshold = 10
-        params.maxThreshold = 220
-        params.filterByArea = True
-        params.minArea = min_area
-        params.filterByCircularity = True
-        params.minCircularity = circularity[0]
-        params.maxCircularity = circularity[1]
-        params.filterByConvexity = False
-        params.filterByInertia = False
-        detector = cv2.SimpleBlobDetector_create(params)
-        return detector.detect(input)
+        if(external_only):
+            mode = cv2.RETR_EXTERNAL
+        else:
+            mode = cv2.RETR_LIST
+        method = cv2.CHAIN_APPROX_SIMPLE
+        contours, hierarchy =cv2.findContours(input, mode=mode, method=method)
+        return contours
 
 
-pipe = GripPipeline()
-cap = cv2.VideoCapture(1)
-while True:
-    ret_val, img = cap.read()
-    pipe.process(img)
-    blobs = pipe.find_blobs_output
-    for b in blobs:
-        points2f = cv2.KeyPoint_convert(b)
 
-    cv2.imshow("test",  img)
-    cv2.waitKey(25)
