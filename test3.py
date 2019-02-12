@@ -1,3 +1,0 @@
-import networktables
-
-networktables.NetworkTablesInstance

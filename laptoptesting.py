@@ -61,6 +61,8 @@ while True:
     left_target = None
     right_target = None
 
+    print("23/33 lmao")
+
     for c in contours:
         area = cv.contourArea(c)
 
@@ -77,6 +79,5 @@ while True:
     cv.waitKey(25)
 
     sd = NetworkTables.getTable('SmartDashboard')
-    sd.putNumber('yeet', filtered_contours[0][0])
-
+    sd.putNumber('yeet', filtered_contours[0])
 
