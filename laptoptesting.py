@@ -1,4 +1,4 @@
-import pipeline
+import pipeline_laptop
 import cv2 as cv
 import os
 import threading
@@ -8,7 +8,7 @@ from networktables import NetworkTables
 os.system("v4l2-ctl -d /dev/video1 -c exposure_auto=1")
 os.system("v4l2-ctl -d /dev/video1 -c exposure_absolute=0")
 
-pipe = pipeline.GripPipeline()
+pipe = pipeline_laptop.GripPipeline()
 cap = cv.VideoCapture(1)
 
 cond = threading.Condition()

@@ -1,7 +1,7 @@
-import pipeline
+import pipeline_laptop
 import cv2 as cv
 
-pipe = pipeline.GripPipeline()
+pipe = pipeline_laptop.GripPipeline()
 cap = cv.VideoCapture(1)
 
 CONTOUR_AREA_THRESHOLD = 300
