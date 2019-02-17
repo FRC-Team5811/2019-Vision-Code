@@ -26,7 +26,7 @@ print("Connected!")
 sd = NetworkTables.getTable('SmartDashboard')
 
 while True:
-    print(sd.getNumber('center_x', 5), end=" ")
-    print(sd.getNumber('center_y', 5), end=" ")
+    print(sd.getNumber('center', 5), end=" ")
+    print(sd.getNumber('side', 5), end=" ")
     print(sd.getNumber('left_area', 5), end=" ")
-    print(sd.getNumber('right_area', 5))
+    print(sd.getNumber('aimed', 5))

@@ -7,6 +7,9 @@ import threading
 from networktables import NetworkTables
 
 DEBUG = True
+NETWORK_TABLES_ON = False
+CAMERA_PORT = 0
+
 
 if DEBUG:
     import pipeline_laptop as pipeline
@@ -14,9 +17,12 @@ else:
     import pipeline
 
 
-CAMERA_PORT = 1
 os.system("v4l2-ctl -d /dev/video{} -c exposure_auto=1".format(CAMERA_PORT))
 os.system("v4l2-ctl -d /dev/video{} -c exposure_absolute=0".format(CAMERA_PORT))
+os.system("v4l2-ctl -d /dev/video{} -c brightness=30".format(CAMERA_PORT))
+os.system("v4l2-ctl -d /dev/video{} -c contrast=10".format(CAMERA_PORT))
+
+
 CONTOUR_AREA_THRESHOLD = 250
 RED = (0, 0, 255)
 BLUE = (255, 0, 0)
@@ -29,7 +35,6 @@ HEIGHT = int(cap.get(4))
 CROPPED_HEIGHT = 320
 MID_X = int(WIDTH / 2)
 ROLLING_AVG_LENGTH = 20
-NETWORK_TABLES_ON = False
 
 pipe = pipeline.GripPipeline()
 
@@ -67,7 +72,6 @@ def target_merger(left_target, right_target):  # merges data from two targets in
         aimed = "left"
     else:
         aimed = "right"
-
 
     data = {
         'side': side,
@@ -148,11 +152,22 @@ while True:
     goals = []
 
     for c in contours:  # filters and simplifies contours
+
+        # cv.drawContours(img, [c], 0, RED, 2)
+
+        rect = cv.minAreaRect(c)
+        angle = rect[2]
+        box = cv.boxPoints(rect)  # converts x,y,w,h to p1,p2,p3,p4
+        box = numpy.int0(box)  # converts all floats to ints
+        cv.drawContours(crop_img, [box], 0, RED, 2)
+
+        print(angle)
+
         area = cv.contourArea(c)
 
         if area > CONTOUR_AREA_THRESHOLD:  # filter out contours by size
             perimeter = cv.arcLength(c, True)  # calculates corners of targets
-            approx = cv.approxPolyDP(c, 0.04 * perimeter, True)
+            approx = cv.approxPolyDP(c, 0.01 * perimeter, True)
 
             filtered_contours.append(approx)
 
@@ -182,7 +197,7 @@ while True:
             # calculating area
             area = cv.contourArea(contour)  # fyi this is less accurate after contours filtered to 4 points
 
-            cv.circle(img, center, 1, RED)
+            # cv.circle(img, center, 1, RED)
 
             # data saved per contour
             data = {
@@ -198,6 +213,12 @@ while True:
     left_target = None
 
     for t in x_sorted_targets:  # merges individual targets into goal units
+
+        # rect = cv.minAreaRect(t['contour'])
+        # box = cv.boxPoints(rect)
+        # box = numpy.int0(box)
+        # cv.drawContours(img, [box], 0, RED, 2)
+
         if t['side'] == "left":
             if left_target is None:
                 left_target = t
@@ -219,38 +240,33 @@ while True:
             close_dist = dist
             final_target = g
 
-        if DEBUG:
-            cv.circle(img, g['center'], 4, RED)
-            rect = cv.boundingRect(g['contour'])
-            x, y, w, h = rect
-            cv.rectangle(img, (x, y), (x + w, y + h), RED)
+        # if DEBUG:
+        #     cv.circle(img, g['center'], 4, RED)
+        #     rect = cv.boundingRect(g['contour'])
+        #     x, y, w, h = rect
+        #     cv.rectangle(img, (x, y), (x + w, y + h), RED)
 
     sd = NetworkTables.getTable('SmartDashboard')
 
     if final_target:
-        if DEBUG:
-            cv.circle(img, final_target['center'], 4, GREEN)
-            rect = cv.boundingRect(final_target['contour'])
-            x, y, w, h = rect
-            cv.rectangle(img, (x, y), (x + w, y + h), GREEN)
+        # if DEBUG:
+            # cv.circle(img, final_target['center'], 4, GREEN)
+            # rect = cv.boundingRect(final_target['contour'])
+            # x, y, w, h = rect
+            # cv.rectangle(img, (x, y), (x + w, y + h), GREEN)
         update_list(final_target['area_ratio'])
-        print(final_target['side'], final_target['aimed'])
+        # print(final_target['side'], final_target['aimed'])
 
+        # for i in final_target:
+        #     print(i, final_target[i])
 
     if NETWORK_TABLES_ON:
         if final_target:
-            sd.putNumber("center_x", final_target['center'][0])
-            sd.putNumber("center_y", final_target['center'][1])
-            sd.putNumber("left_area", final_target['left_area'])
-            sd.putNumber("right_area", final_target['right_area'])
-        else:
-            sd.putNumber("center_x", 0)
-            sd.putNumber("center_y", 0)
-            sd.putNumber("left_area", 0)
-            sd.putNumber("right_area", 0)
-
+            for i in final_target:
+                sd.putNumber(i, final_target[i])
 
     if DEBUG:
         cv.line(img, (mid_x, height), (mid_x, 0), RED)
         cv.imshow("Window", img)
+        # cv.imshow("window2", crop_img)
         cv.waitKey(25)
