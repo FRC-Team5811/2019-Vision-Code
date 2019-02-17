@@ -48,14 +48,39 @@ def connection_listener(connected, info):
 
 
 def target_merger(left_target, right_target):  # merges data from two targets into a goal
+    l_area = left_target['area']
+    r_area = right_target['area']
+    t_area = l_area + r_area
+    ratio = l_area / r_area
+    center = midpoint(left_target['center'], right_target['center'])
+    xc = center[0]
+    yc = center[1]
+
+    if ratio > 1.1:
+        side = "left"
+    elif ratio < 0.90909090909:
+        side = "right"
+    else:
+        side = "straight"
+
+    if xc < mid_x:
+        aimed = "left"
+    else:
+        aimed = "right"
+
+
     data = {
-        'left_area': left_target['area'],
-        'right_area': right_target['area'],
-        'total_area': left_target['area'] + right_target['area'],
-        'area_ratio': left_target['area'] / right_target['area'],
-        'center': midpoint(left_target['center'], right_target['center']),
+        'side': side,
+        'aimed': aimed,
+        'left_area': l_area,
+        'right_area': r_area,
+        'total_area': t_area,
+        'area_ratio': ratio,
+        'center': center,
         'contour': numpy.concatenate((left_target['contour'], right_target['contour']))
     }
+
+    # print(side, aimed)
 
     return data
 
@@ -110,7 +135,7 @@ while True:
 
     crop_img = img[HEIGHT - CROPPED_HEIGHT:HEIGHT, 0:WIDTH]  # cropping image
 
-    pipe.process(img)  # processes image via GRIP pipeline
+    pipe.process(crop_img)  # processes image via GRIP pipeline
     img = cv.cvtColor(pipe.cv_erode_output, cv.COLOR_GRAY2BGR)  # converts to color
     contours = pipe.find_contours_output  # contour data
 
@@ -194,6 +219,12 @@ while True:
             close_dist = dist
             final_target = g
 
+        if DEBUG:
+            cv.circle(img, g['center'], 4, RED)
+            rect = cv.boundingRect(g['contour'])
+            x, y, w, h = rect
+            cv.rectangle(img, (x, y), (x + w, y + h), RED)
+
     sd = NetworkTables.getTable('SmartDashboard')
 
     if final_target:
@@ -203,6 +234,8 @@ while True:
             x, y, w, h = rect
             cv.rectangle(img, (x, y), (x + w, y + h), GREEN)
         update_list(final_target['area_ratio'])
+        print(final_target['side'], final_target['aimed'])
+
 
     if NETWORK_TABLES_ON:
         if final_target:
@@ -216,6 +249,8 @@ while True:
             sd.putNumber("left_area", 0)
             sd.putNumber("right_area", 0)
 
+
     if DEBUG:
+        cv.line(img, (mid_x, height), (mid_x, 0), RED)
         cv.imshow("Window", img)
         cv.waitKey(25)
