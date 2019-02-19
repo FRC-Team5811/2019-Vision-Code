@@ -4,18 +4,23 @@ import numpy as np
 import cv2 as cv
 import os
 import threading
+import time
 from networktables import NetworkTables
 
-
-DEBUG = True
-NETWORK_TABLES_ON = False
+DEBUG = False
+NETWORK_TABLES_ON = True
+STREAM_VISION = True
 CAMERA_PORT = 0
 
 if DEBUG:
     import pipeline_laptop as pipeline
 else:
     import pipeline
+    from cscore import CameraServer, CvSource, VideoMode
 
+    inst = CameraServer.getInstance()
+    camera = CvSource("CvCam", VideoMode.PixelFormat.kBGR, 320, 160, 15)
+    server = inst.startAutomaticCapture(camera=camera, return_server=True)
 
 os.system("v4l2-ctl -d /dev/video{} -c exposure_auto=1".format(CAMERA_PORT))
 os.system("v4l2-ctl -d /dev/video{} -c exposure_absolute=0".format(CAMERA_PORT))
@@ -28,7 +33,7 @@ HEIGHT = int(cap.get(4))
 CROPPED_HEIGHT = 320
 MID_X = int(WIDTH / 2)
 
-CONTOUR_AREA_THRESHOLD = 200  # min area to be recognized as a target
+CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
 GOAL_PERCENT_DISTANCE_THRESHOLD = 0.6  # percent of screen in middle where area trumps distance
 GOAL_DISTANCE_THRESHOLD = int(GOAL_PERCENT_DISTANCE_THRESHOLD / 2 * WIDTH)
 
@@ -59,10 +64,15 @@ def merger(left_target, right_target):
     center_right = right_target['center']
     center = midpoint(center_left, center_right)
 
+    difference_area = area_left - area_right
+    offset = MID_X - center[0]
+
     data = {
         'left_area': area_left,
         'right_area': area_right,
         'total_area': total_area,
+        'difference_area': difference_area,
+        'offset': offset,
         'center': center,
         'contour': np.concatenate((left_target['contour'], right_target['contour']))
 
@@ -92,8 +102,11 @@ if NETWORK_TABLES_ON:
 
 
 while True:
+    time_init = time.time()
+
     ret_val, raw_img = cap.read()
     cropped_img = raw_img[HEIGHT - CROPPED_HEIGHT:HEIGHT, 0:WIDTH]  # cropping image
+    # cropped_img = raw_img
 
     pipe.process(cropped_img)
     img = cv.cvtColor(pipe.cv_erode_output, cv.COLOR_GRAY2BGR)  # converts to color
@@ -104,7 +117,6 @@ while True:
 
     targets = []
     goals = []
-
     for c in contours:  # filters targets and packages them
         rect = cv.minAreaRect(c)  # calculating rotated rectangle
         angle = rect[2]  # angle of rect
@@ -179,8 +191,11 @@ while True:
             area = g['total_area']
 
             if area > max_area:
+
                 max_area = area
                 selected_goal = g
+            # elif  area > max_area - 50:
+            #
 
     else:
         for g in goals:
@@ -192,20 +207,39 @@ while True:
                 selected_goal = g
 
     if selected_goal:
-        if DEBUG:
+        if DEBUG or STREAM_VISION:
             cv.circle(img, selected_goal['center'], 4, BONDS_COLOR)
             rect = cv.minAreaRect(selected_goal['contour'])
             box = cv.boxPoints(rect)
             box = np.int0(box)
             cv.drawContours(img, [box], 0, BONDS_COLOR, 1)
+        # print(selected_goal['center'])
 
-    if DEBUG:
+    if DEBUG or STREAM_VISION:
         cv.line(img, (MID_X, 0), (MID_X, height), RED)
         cv.line(img, (MID_X - GOAL_DISTANCE_THRESHOLD, 0), (MID_X - GOAL_DISTANCE_THRESHOLD, height), YELLOW)
         cv.line(img, (MID_X + GOAL_DISTANCE_THRESHOLD, 0), (MID_X + GOAL_DISTANCE_THRESHOLD, height), YELLOW)
 
+    if DEBUG:
         cv.imshow("Window", img)
         cv.waitKey(25)
 
     if NETWORK_TABLES_ON:
         sd = NetworkTables.getTable('SmartDashboard')
+        if selected_goal:
+            for i in selected_goal:
+                sd.putNumber('left_area', selected_goal['left_area'])
+                sd.putNumber('right_area', selected_goal['right_area'])
+                sd.putNumber('total_area', selected_goal['total_area'])
+                sd.putNumber('difference_area', selected_goal['difference_area'])
+                sd.putNumber('offset', selected_goal['offset'])
+                sd.putNumber('center_x', selected_goal['center'][0])
+                sd.putNumber('center_y', selected_goal['center'][1])
+
+    if STREAM_VISION:
+        streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
+
+        camera.putFrame(streamed_img)
+
+    elapsed = time.time() - time_init
+    print(1 / elapsed)

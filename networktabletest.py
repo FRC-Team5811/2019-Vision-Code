@@ -1,5 +1,6 @@
 import threading
 from networktables import NetworkTables
+import os
 
 cond = threading.Condition()
 notified = [False]
@@ -26,7 +27,9 @@ print("Connected!")
 sd = NetworkTables.getTable('SmartDashboard')
 
 while True:
-    print(sd.getNumber('center', 5), end=" ")
-    print(sd.getNumber('side', 5), end=" ")
-    print(sd.getNumber('left_area', 5), end=" ")
-    print(sd.getNumber('aimed', 5))
+    print('left_area', sd.getNumber('left_area', 0))
+    print('right_area', sd.getNumber('right_area', 0))
+    print('total_area', sd.getNumber('total_area', 0))
+    print('center_x', sd.getNumber('center_x', 0))
+    print('center_y', sd.getNumber('center_y', 0))
+    os.system('clear')
