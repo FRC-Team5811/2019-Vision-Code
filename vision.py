@@ -175,12 +175,12 @@ while True:
         if dist < GOAL_DISTANCE_THRESHOLD:
             thresholded_goals.append(g)
 
-        if DEBUG:
-            cv.circle(img, g['center'], 4, BLUE)
+        if DEBUG or STREAM_VISION:
+            cv.circle(img, g['center'], 4, RED)
             rect = cv.minAreaRect(g['contour'])
             box = cv.boxPoints(rect)
             box = np.int0(box)
-            cv.drawContours(img, [box], 0, BLUE, 1)
+            cv.drawContours(img, [box], 0, RED, 1)
 
     max_area = 0
     min_dist = WIDTH
@@ -208,11 +208,11 @@ while True:
 
     if selected_goal:
         if DEBUG or STREAM_VISION:
-            cv.circle(img, selected_goal['center'], 4, BONDS_COLOR)
+            cv.circle(img, selected_goal['center'], 4, GREEN)
             rect = cv.minAreaRect(selected_goal['contour'])
             box = cv.boxPoints(rect)
             box = np.int0(box)
-            cv.drawContours(img, [box], 0, BONDS_COLOR, 1)
+            cv.drawContours(img, [box], 0, GREEN, 1)
         # print(selected_goal['center'])
 
     if DEBUG or STREAM_VISION:
@@ -241,5 +241,5 @@ while True:
 
         camera.putFrame(streamed_img)
 
-    elapsed = time.time() - time_init
-    print(1 / elapsed)
+    elapsed = time.time() - time_init  # time one loop takes
+    # print(1 / elapsed)
