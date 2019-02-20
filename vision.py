@@ -32,6 +32,7 @@ WIDTH = int(cap.get(3))
 HEIGHT = int(cap.get(4))
 CROPPED_HEIGHT = 320
 MID_X = int(WIDTH / 2)
+FOV = 61
 
 CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
 GOAL_PERCENT_DISTANCE_THRESHOLD = 0.6  # percent of screen in middle where area trumps distance
@@ -67,12 +68,15 @@ def merger(left_target, right_target):
     difference_area = area_left - area_right
     offset = MID_X - center[0]
 
+    angle = offset / MID_X * FOV / 2
+
     data = {
         'left_area': area_left,
         'right_area': area_right,
         'total_area': total_area,
         'difference_area': difference_area,
         'offset': offset,
+        'angle': angle,
         'center': center,
         'contour': np.concatenate((left_target['contour'], right_target['contour']))
 
@@ -233,8 +237,10 @@ while True:
                 sd.putNumber('total_area', selected_goal['total_area'])
                 sd.putNumber('difference_area', selected_goal['difference_area'])
                 sd.putNumber('offset', selected_goal['offset'])
+                sd.putNumber('angle', selected_goal['angle'])
                 sd.putNumber('center_x', selected_goal['center'][0])
                 sd.putNumber('center_y', selected_goal['center'][1])
+                sd.putNumber('time_stamp', time.time())
 
     if STREAM_VISION:
         streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
@@ -242,4 +248,4 @@ while True:
         camera.putFrame(streamed_img)
 
     elapsed = time.time() - time_init  # time one loop takes
-    # print(1 / elapsed)
+    print(selected_goal['angle'])
