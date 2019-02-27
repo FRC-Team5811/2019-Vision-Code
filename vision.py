@@ -70,11 +70,17 @@ def merger(left_target, right_target):
 
     angle = offset / MID_X * FOV / 2
 
+    x_offset = (area_left - area_right) / total_area
+
+    p_screen = total_area / (WIDTH * HEIGHT)
+
     data = {
         'left_area': area_left,
         'right_area': area_right,
         'total_area': total_area,
         'difference_area': difference_area,
+        'x_offset': x_offset,
+        'p_screen': p_screen,
         'offset': offset,
         'angle': angle,
         'center': center,
@@ -236,6 +242,8 @@ while True:
                 sd.putNumber('right_area', selected_goal['right_area'])
                 sd.putNumber('total_area', selected_goal['total_area'])
                 sd.putNumber('difference_area', selected_goal['difference_area'])
+                sd.putNumber('x_offset', selected_goal['x_offset'])
+                sd.putNumber('p_screen', selected_goal['p_screen'])
                 sd.putNumber('offset', selected_goal['offset'])
                 sd.putNumber('angle', selected_goal['angle'])
                 sd.putNumber('center_x', selected_goal['center'][0])
