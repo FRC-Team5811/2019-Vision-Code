@@ -30,9 +30,10 @@ os.system("v4l2-ctl -d /dev/video{} -c contrast=10".format(CAMERA_PORT))
 cap = cv.VideoCapture(CAMERA_PORT)
 WIDTH = int(cap.get(3))
 HEIGHT = int(cap.get(4))
-CROPPED_HEIGHT = 320
 MID_X = int(WIDTH / 2)
-FOV = 61
+
+CROPPED_HEIGHT = 320
+HFOV = 61
 
 CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
 GOAL_PERCENT_DISTANCE_THRESHOLD = 0.6  # percent of screen in middle where area trumps distance
@@ -68,7 +69,7 @@ def merger(left_target, right_target):
     difference_area = area_left - area_right
     offset = MID_X - center[0]
 
-    angle = offset / MID_X * FOV / 2
+    angle = offset / MID_X * HFOV / 2
 
     x_offset = (area_left - area_right) / total_area
 
