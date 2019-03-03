@@ -12,6 +12,31 @@ NETWORK_TABLES_ON = True
 STREAM_VISION = True
 CAMERA_PORT = 0
 
+
+cond = threading.Condition()
+notified = [False]
+
+
+def connection_listener(connected, info):
+    print(info, '; Connected=%s' % connected)
+    with cond:
+        notified[0] = True
+        cond.notify()
+
+
+if NETWORK_TABLES_ON:
+    NetworkTables.initialize(server='10.58.11.2')
+    NetworkTables.addConnectionListener(connection_listener, immediateNotify=True)
+
+    with cond:
+        print("Waiting")
+        if not notified[0]:
+            cond.wait()
+
+    print("Connected!")
+
+    sd = NetworkTables.getTable('SmartDashboard')
+
 if DEBUG:
     import pipeline_laptop as pipeline
 else:
@@ -47,15 +72,6 @@ BONDS_COLOR = (0, 179, 255)
 BLACK = (0, 0, 0)
 
 pipe = pipeline.GripPipeline()
-cond = threading.Condition()
-notified = [False]
-
-
-def connection_listener(connected, info):
-    print(info, '; Connected=%s' % connected)
-    with cond:
-        notified[0] = True
-        cond.notify()
 
 
 def merger(left_target, right_target):
@@ -98,18 +114,6 @@ def midpoint(p1, p2):
     mx = int((x1 + x2) / 2)
     my = int((y1 + y2) / 2)
     return mx, my
-
-
-if NETWORK_TABLES_ON:
-    NetworkTables.initialize(server='10.58.11.2')
-    NetworkTables.addConnectionListener(connection_listener, immediateNotify=True)
-
-    with cond:
-        print("Waiting")
-        if not notified[0]:
-            cond.wait()
-
-    print("Connected!")
 
 
 while True:
@@ -236,7 +240,6 @@ while True:
         cv.waitKey(25)
 
     if NETWORK_TABLES_ON:
-        sd = NetworkTables.getTable('SmartDashboard')
         if selected_goal:
             for i in selected_goal:
                 sd.putNumber('left_area', selected_goal['left_area'])
@@ -257,4 +260,4 @@ while True:
         camera.putFrame(streamed_img)
 
     elapsed = time.time() - time_init  # time one loop takes
-    print(selected_goal['angle'])
+    # print(selected_goal['angle'])
