@@ -12,6 +12,15 @@ NETWORK_TABLES_ON = True
 STREAM_VISION = True
 CAMERA_PORT = 0
 
+print()
+print("DEBUG {0}".format('ENABLED' if DEBUG else 'DISABLED'))
+print()
+print("NETWORK TABLES {0}".format('ENABLED' if NETWORK_TABLES_ON else 'DISABLED'))
+print()
+print("VISION STREAM {0}".format('ENABLED' if STREAM_VISION else 'DISABLED'))
+print()
+print("CAMERA PORT {0}".format(CAMERA_PORT))
+print()
 
 cond = threading.Condition()
 notified = [False]
@@ -29,7 +38,7 @@ if NETWORK_TABLES_ON:
     NetworkTables.addConnectionListener(connection_listener, immediateNotify=True)
 
     with cond:
-        print("Waiting")
+        print("Waiting...")
         if not notified[0]:
             cond.wait()
 
@@ -61,7 +70,7 @@ CROPPED_HEIGHT = 320
 HFOV = 61
 
 CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
-GOAL_PERCENT_DISTANCE_THRESHOLD = 0.6  # percent of screen in middle where area trumps distance
+GOAL_PERCENT_DISTANCE_THRESHOLD = 0.4  # percent of screen in middle where area trumps distance
 GOAL_DISTANCE_THRESHOLD = int(GOAL_PERCENT_DISTANCE_THRESHOLD / 2 * WIDTH)
 
 RED = (0, 0, 255)
@@ -91,6 +100,19 @@ def merger(left_target, right_target):
 
     p_screen = total_area / (WIDTH * HEIGHT)
 
+    left_contour = left_target['contour']
+    right_contour = right_target['contour']
+    left_gap_point = sorted(left_contour, key=lambda x: [x[0]], reverse=True)[0]
+    right_gap_point = sorted(right_contour, key=lambda x: [x[0]])[0]
+
+    x1, y1 = left_gap_point
+    x2, y2 = right_gap_point
+
+    x_diff = x1 - x2
+    y_diff = y1 - y2
+
+    dist = (x_diff ** 2 + y_diff ** 2) ** 0.5
+
     data = {
         'left_area': area_left,
         'right_area': area_right,
@@ -101,6 +123,7 @@ def merger(left_target, right_target):
         'offset': offset,
         'angle': angle,
         'center': center,
+        'gap_distance': dist,
         'contour': np.concatenate((left_target['contour'], right_target['contour']))
 
     }
@@ -253,6 +276,7 @@ while True:
                 sd.putNumber('center_x', selected_goal['center'][0])
                 sd.putNumber('center_y', selected_goal['center'][1])
                 sd.putNumber('time_stamp', time.time())
+                sd.putNumber('gap_distance', selected_goal['gap_distance'])
 
     if STREAM_VISION:
         streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
@@ -260,4 +284,5 @@ while True:
         camera.putFrame(streamed_img)
 
     elapsed = time.time() - time_init  # time one loop takes
+    # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
     # print(selected_goal['angle'])
