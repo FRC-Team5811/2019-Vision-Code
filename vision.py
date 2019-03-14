@@ -9,8 +9,10 @@ from networktables import NetworkTables
 
 DEBUG = False
 NETWORK_TABLES_ON = True
-STREAM_VISION = True
+STREAM_VISION = False
 CAMERA_PORT = 0
+IP = 'roboRIO-5811-FRC.local'
+
 
 print()
 print("DEBUG {0}".format('ENABLED' if DEBUG else 'DISABLED'))
@@ -21,6 +23,7 @@ print("VISION STREAM {0}".format('ENABLED' if STREAM_VISION else 'DISABLED'))
 print()
 print("CAMERA PORT {0}".format(CAMERA_PORT))
 print()
+print("CONNECTING TO {0}".format(IP))
 
 cond = threading.Condition()
 notified = [False]
@@ -34,7 +37,7 @@ def connection_listener(connected, info):
 
 
 if NETWORK_TABLES_ON:
-    NetworkTables.initialize(server='10.58.11.2')
+    NetworkTables.initialize(server=IP)
     NetworkTables.addConnectionListener(connection_listener, immediateNotify=True)
 
     with cond:
@@ -50,11 +53,13 @@ if DEBUG:
     import pipeline_laptop as pipeline
 else:
     import pipeline
-    from cscore import CameraServer, CvSource, VideoMode
 
-    inst = CameraServer.getInstance()
-    camera = CvSource("CvCam", VideoMode.PixelFormat.kBGR, 320, 160, 15)
-    server = inst.startAutomaticCapture(camera=camera, return_server=True)
+    if STREAM_VISION:
+        from cscore import CameraServer, CvSource, VideoMode
+
+        inst = CameraServer.getInstance()
+        camera = CvSource("CvCam", VideoMode.PixelFormat.kBGR, 320, 160, 15)
+        server = inst.startAutomaticCapture(camera=camera, return_server=True)
 
 os.system("v4l2-ctl -d /dev/video{} -c exposure_auto=1".format(CAMERA_PORT))
 os.system("v4l2-ctl -d /dev/video{} -c exposure_absolute=0".format(CAMERA_PORT))
@@ -70,7 +75,7 @@ CROPPED_HEIGHT = 320
 HFOV = 61
 
 CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
-GOAL_PERCENT_DISTANCE_THRESHOLD = 0.4  # percent of screen in middle where area trumps distance
+GOAL_PERCENT_DISTANCE_THRESHOLD = 0.02  # percent of screen in middle where area trumps distance
 GOAL_DISTANCE_THRESHOLD = int(GOAL_PERCENT_DISTANCE_THRESHOLD / 2 * WIDTH)
 
 RED = (0, 0, 255)
@@ -284,5 +289,7 @@ while True:
         camera.putFrame(streamed_img)
 
     elapsed = time.time() - time_init  # time one loop takes
-    # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
+    print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
+    if STREAM_VISION:
+        print("VISION STREAM ENABLED")
     # print(selected_goal['angle'])
