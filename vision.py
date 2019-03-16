@@ -87,6 +87,22 @@ BLACK = (0, 0, 0)
 
 pipe = pipeline.GripPipeline()
 
+def sendTables(selected_goal,elapsed):
+    sd.putNumber('left_area', selected_goal['left_area'])
+    sd.putNumber('right_area', selected_goal['right_area'])
+    sd.putNumber('total_area', selected_goal['total_area'])
+    sd.putNumber('difference_area', selected_goal['difference_area'])
+    sd.putNumber('x_offset', selected_goal['x_offset'])
+    sd.putNumber('p_screen', selected_goal['p_screen'])
+    sd.putNumber('offset', selected_goal['offset'])
+    sd.putNumber('angle', selected_goal['angle'])
+    sd.putNumber('center_x', selected_goal['center'][0])
+    sd.putNumber('center_y', selected_goal['center'][1])
+    sd.putNumber('time_stamp', elapsed)
+    sd.putNumber('gap_distance', selected_goal['gap_distance'])
+    sd.putNumber('loop_rate', 1/elapsed)
+
+
 
 def merger(left_target, right_target):
     area_left = left_target['area']
@@ -143,7 +159,7 @@ def midpoint(p1, p2):
     my = int((y1 + y2) / 2)
     return mx, my
 
-
+print("Running...")
 while True:
     time_init = time.time()
 
@@ -267,6 +283,8 @@ while True:
         cv.imshow("Window", img)
         cv.waitKey(25)
 
+    elapsed = time.time() - time_init  # time one loop takes
+
     if NETWORK_TABLES_ON:
         if selected_goal:
             for i in selected_goal:
@@ -280,16 +298,17 @@ while True:
                 sd.putNumber('angle', selected_goal['angle'])
                 sd.putNumber('center_x', selected_goal['center'][0])
                 sd.putNumber('center_y', selected_goal['center'][1])
-                sd.putNumber('time_stamp', time.time())
+                sd.putNumber('time_stamp', elapsed)
                 sd.putNumber('gap_distance', selected_goal['gap_distance'])
+                sd.putNumber('loop_rate', 1/elapsed)
+
 
     if STREAM_VISION:
         streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
 
         camera.putFrame(streamed_img)
 
-    elapsed = time.time() - time_init  # time one loop takes
-    print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
+    #print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
     if STREAM_VISION:
         print("VISION STREAM ENABLED")
     # print(selected_goal['angle'])
