@@ -144,6 +144,8 @@ def midpoint(p1, p2):
     return mx, my
 
 
+print("Running...")
+
 while True:
     time_init = time.time()
 
@@ -267,6 +269,8 @@ while True:
         cv.imshow("Window", img)
         cv.waitKey(25)
 
+    elapsed = time.time() - time_init  # time one loop takes
+
     if NETWORK_TABLES_ON:
         if selected_goal:
             for i in selected_goal:
@@ -280,16 +284,15 @@ while True:
                 sd.putNumber('angle', selected_goal['angle'])
                 sd.putNumber('center_x', selected_goal['center'][0])
                 sd.putNumber('center_y', selected_goal['center'][1])
-                sd.putNumber('time_stamp', time.time())
+                sd.putNumber('time_stamp', elapsed)
                 sd.putNumber('gap_distance', selected_goal['gap_distance'])
-
+                sd.putNumber('loop_rate', 1 / elapsed)
+                
     if STREAM_VISION:
         streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
-
         camera.putFrame(streamed_img)
 
-    elapsed = time.time() - time_init  # time one loop takes
-    print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
+    # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
     if STREAM_VISION:
         print("VISION STREAM ENABLED")
     # print(selected_goal['angle'])
