@@ -67,11 +67,11 @@ os.system("v4l2-ctl -d /dev/video{} -c brightness=30".format(CAMERA_PORT))
 os.system("v4l2-ctl -d /dev/video{} -c contrast=10".format(CAMERA_PORT))
 
 cap = cv.VideoCapture(CAMERA_PORT)
-WIDTH = int(cap.get(3))
-HEIGHT = int(cap.get(4))
+WIDTH = int(cap.get(3)/2)
+HEIGHT = int(cap.get(4)/2)
 MID_X = int(WIDTH / 2)
 
-CROPPED_HEIGHT = 320
+CROPPED_HEIGHT = 160
 HFOV = 61
 
 CONTOUR_AREA_THRESHOLD = 0  # min area to be recognized as a target
@@ -150,8 +150,10 @@ while True:
     time_init = time.time()
 
     ret_val, raw_img = cap.read()
-    cropped_img = raw_img[HEIGHT - CROPPED_HEIGHT:HEIGHT, 0:WIDTH]  # cropping image
-    # cropped_img = raw_img
+    resized_img = cv.resize(raw_img, (WIDTH, HEIGHT))
+    cropped_img = resized_img[HEIGHT - CROPPED_HEIGHT:HEIGHT, 0:WIDTH]  # cropping image
+    # cropped_img = resized_img
+
 
     pipe.process(cropped_img)
     img = cv.cvtColor(pipe.cv_erode_output, cv.COLOR_GRAY2BGR)  # converts to color
@@ -159,6 +161,7 @@ while True:
 
     height = img.shape[0]
     width = img.shape[1]
+
 
     targets = []
     goals = []
@@ -289,8 +292,8 @@ while True:
                 sd.putNumber('loop_rate', 1 / elapsed)
                 
     if STREAM_VISION:
-        streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
-        camera.putFrame(streamed_img)
+        # streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
+        camera.putFrame(img)
 
     # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
     if STREAM_VISION:
