@@ -162,9 +162,11 @@ while True:
     height = img.shape[0]
     width = img.shape[1]
 
-
     targets = []
     goals = []
+
+    left_select_mode = sd.getNumber('left_select_mode', 0)
+
     for c in contours:  # filters targets and packages them
         rect = cv.minAreaRect(c)  # calculating rotated rectangle
         angle = rect[2]  # angle of rect
@@ -234,25 +236,33 @@ while True:
     min_dist = WIDTH
     selected_goal = None
 
-    if thresholded_goals:
-        for g in thresholded_goals:
-            area = g['total_area']
-
-            if area > max_area:
-
-                max_area = area
-                selected_goal = g
-            # elif  area > max_area - 50:
-            #
-
-    else:
+    if left_select_mode:  # prioritizes left targets during autonomous
         for g in goals:
             cx = g['center'][0]
-            dist = abs(MID_X - cx)
 
-            if dist < min_dist:
-                min_dist = dist
+            if cx < min_dist:
+                min_dist = cx
                 selected_goal = g
+                
+    else:
+        if thresholded_goals:
+            for g in thresholded_goals:
+                area = g['total_area']
+
+                if area > max_area:
+
+                    max_area = area
+                    selected_goal = g
+
+        else:
+            for g in goals:
+                cx = g['center'][0]
+                dist = abs(MID_X - cx)
+
+                if dist < min_dist:
+                    min_dist = dist
+                    selected_goal = g
+
 
     if selected_goal:
         if DEBUG or STREAM_VISION:
