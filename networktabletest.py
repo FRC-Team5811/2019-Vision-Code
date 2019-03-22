@@ -13,7 +13,7 @@ def connectionListener(connected, info):
         cond.notify()
 
 
-NetworkTables.initialize(server='10.58.11.2')
+NetworkTables.initialize(server='roboRIO-5811-FRC.local')
 NetworkTables.addConnectionListener(connectionListener, immediateNotify=True)
 
 with cond:
@@ -26,6 +26,10 @@ print("Connected!")
 
 sd = NetworkTables.getTable('SmartDashboard')
 
+sd.putNumber('left_select_mode', 0)
+# sd.putNumber('stream_vision', 0)
+
+
 while True:
     # print('left_area', sd.getNumber('left_area', 0))
     # print('right_area', sd.getNumber('right_area', 0))
@@ -34,5 +38,10 @@ while True:
     # print('offset', sd.getNumber('offset', 0))
     # print('center_x', sd.getNumber('center_x', 0))
     # print('center_y', sd.getNumber('center_y', 0))
-    print('loop_rate', sd.getNumber('loop_rate', 0))
-    os.system('clear')
+
+    # print('loop_rate', sd.getNumber('loop_rate', 0))
+    # print('left_select_mode', sd.getNumber('left_select_mode', 0))
+    # os.system('clear')
+
+    stream = float(input("stream_vision state: "))
+    sd.putNumber('stream_vision', stream)
