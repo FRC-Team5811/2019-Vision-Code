@@ -7,23 +7,33 @@ import threading
 import time
 from networktables import NetworkTables
 
+ON_FIELD = True
+
 DEBUG = False
 NETWORK_TABLES_ON = True
 STREAM_VISION = False
 CAMERA_PORT = 0
 IP = 'roboRIO-5811-FRC.local'
 
+if ON_FIELD:
+    DEBUG = False
+    NETWORK_TABLES_ON = True
+    STREAM_VISION = False
+    IP = '10.58.11.2'
 
+
+print("ON FIELD {0}".format('TRUE' if ON_FIELD else 'FALSE'))
 print()
 print("DEBUG {0}".format('ENABLED' if DEBUG else 'DISABLED'))
 print()
 print("NETWORK TABLES {0}".format('ENABLED' if NETWORK_TABLES_ON else 'DISABLED'))
 print()
-print("VISION STREAM {0}".format('ENABLED' if STREAM_VISION else 'DISABLED'))
-print()
 print("CAMERA PORT {0}".format(CAMERA_PORT))
 print()
+print("VISION STREAM {0}".format('ENABLED' if STREAM_VISION else 'DISABLED'))
+print()
 print("CONNECTING TO {0}".format(IP))
+print()
 
 cond = threading.Condition()
 notified = [False]
@@ -48,6 +58,12 @@ if NETWORK_TABLES_ON:
     print("Connected!")
 
     sd = NetworkTables.getTable('SmartDashboard')
+
+    if sd.getNumber("stream_vision", 0) == 0:
+        STREAM_VISION = False
+    else:
+        STREAM_VISION = True
+
 
 if DEBUG:
     import pipeline_laptop as pipeline
@@ -165,7 +181,18 @@ while True:
     targets = []
     goals = []
 
-    left_select_mode = sd.getNumber('left_select_mode', 0)
+    if NETWORK_TABLES_ON:
+        left_select_mode = sd.getNumber('left_select_mode', 0)
+        if sd.getNumber("stream_vision", 0) == 0:
+            if STREAM_VISION is True:
+                print("STREAM VISION DISABLED")
+            STREAM_VISION = False
+        else:
+            if STREAM_VISION is False:
+                print("STREAM VISION ENABLED")
+            STREAM_VISION = True
+    else:
+        left_select_mode = 0
 
     for c in contours:  # filters targets and packages them
         rect = cv.minAreaRect(c)  # calculating rotated rectangle
@@ -243,7 +270,7 @@ while True:
             if cx < min_dist:
                 min_dist = cx
                 selected_goal = g
-                
+
     else:
         if thresholded_goals:
             for g in thresholded_goals:
@@ -263,7 +290,6 @@ while True:
                     min_dist = dist
                     selected_goal = g
 
-
     if selected_goal:
         if DEBUG or STREAM_VISION:
             cv.circle(img, selected_goal['center'], 4, GREEN)
@@ -274,9 +300,9 @@ while True:
         # print(selected_goal['center'])
 
     if DEBUG or STREAM_VISION:
-        cv.line(img, (MID_X, 0), (MID_X, height), RED)
-        cv.line(img, (MID_X - GOAL_DISTANCE_THRESHOLD, 0), (MID_X - GOAL_DISTANCE_THRESHOLD, height), YELLOW)
-        cv.line(img, (MID_X + GOAL_DISTANCE_THRESHOLD, 0), (MID_X + GOAL_DISTANCE_THRESHOLD, height), YELLOW)
+        cv.line(img, (MID_X, 0), (MID_X, height), YELLOW)
+        # cv.line(img, (MID_X - GOAL_DISTANCE_THRESHOLD, 0), (MID_X - GOAL_DISTANCE_THRESHOLD, height), YELLOW)
+        # cv.line(img, (MID_X + GOAL_DISTANCE_THRESHOLD, 0), (MID_X + GOAL_DISTANCE_THRESHOLD, height), YELLOW)
 
     if DEBUG:
         cv.imshow("Window", img)
@@ -297,15 +323,14 @@ while True:
                 sd.putNumber('angle', selected_goal['angle'])
                 sd.putNumber('center_x', selected_goal['center'][0])
                 sd.putNumber('center_y', selected_goal['center'][1])
-                sd.putNumber('time_stamp', elapsed)
                 sd.putNumber('gap_distance', selected_goal['gap_distance'])
-                sd.putNumber('loop_rate', 1 / elapsed)
+        sd.putNumber('time_stamp', elapsed)
+        sd.putNumber('loop_rate', 1 / elapsed)
                 
     if STREAM_VISION:
-        # streamed_img = cv.resize(img, None, fx=0.5, fy=0.5, interpolation=cv.INTER_CUBIC)
         camera.putFrame(img)
 
+    # print(1 / elapsed)
+
     # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
-    if STREAM_VISION:
-        print("VISION STREAM ENABLED")
     # print(selected_goal['angle'])
