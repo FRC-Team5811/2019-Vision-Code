@@ -5,19 +5,18 @@ import cv2 as cv
 import os
 import threading
 import time
-from networktables import NetworkTables
+import serial
 
 ON_FIELD = True
 
 DEBUG = False
-NETWORK_TABLES_ON = True
+SERIAL_ON = True
 STREAM_VISION = False
 CAMERA_PORT = 0
 IP = 'roboRIO-5811-FRC.local'
 
 if ON_FIELD:
     DEBUG = False
-    NETWORK_TABLES_ON = True
     STREAM_VISION = False
     IP = '10.58.11.2'
 
@@ -26,43 +25,12 @@ print("ON FIELD {0}".format('TRUE' if ON_FIELD else 'FALSE'))
 print()
 print("DEBUG {0}".format('ENABLED' if DEBUG else 'DISABLED'))
 print()
-print("NETWORK TABLES {0}".format('ENABLED' if NETWORK_TABLES_ON else 'DISABLED'))
-print()
 print("CAMERA PORT {0}".format(CAMERA_PORT))
 print()
 print("VISION STREAM {0}".format('ENABLED' if STREAM_VISION else 'DISABLED'))
 print()
 print("CONNECTING TO {0}".format(IP))
 print()
-
-cond = threading.Condition()
-notified = [False]
-
-
-def connection_listener(connected, info):
-    print(info, '; Connected=%s' % connected)
-    with cond:
-        notified[0] = True
-        cond.notify()
-
-
-if NETWORK_TABLES_ON:
-    NetworkTables.initialize(server=IP)
-    NetworkTables.addConnectionListener(connection_listener, immediateNotify=True)
-
-    with cond:
-        print("Waiting...")
-        if not notified[0]:
-            cond.wait()
-
-    print("Connected!")
-
-    sd = NetworkTables.getTable('SmartDashboard')
-
-    if sd.getNumber("stream_vision", 0) == 0:
-        STREAM_VISION = False
-    else:
-        STREAM_VISION = True
 
 
 if DEBUG:
@@ -101,7 +69,13 @@ YELLOW = (0, 255, 255)
 BONDS_COLOR = (0, 179, 255)
 BLACK = (0, 0, 0)
 
+left_select_mode = 0
+
 pipe = pipeline.GripPipeline()
+
+if SERIAL_ON:
+    ser = serial.Serial(port='/dev/ttyS0', baudrate=115200)
+    print("Serial connected")
 
 
 def merger(left_target, right_target):
@@ -180,19 +154,6 @@ while True:
 
     targets = []
     goals = []
-
-    if NETWORK_TABLES_ON:
-        left_select_mode = sd.getNumber('left_select_mode', 0)
-        if sd.getNumber("stream_vision", 0) == 0:
-            if STREAM_VISION is True:
-                print("STREAM VISION DISABLED")
-            STREAM_VISION = False
-        else:
-            if STREAM_VISION is False:
-                print("STREAM VISION ENABLED")
-            STREAM_VISION = True
-    else:
-        left_select_mode = 0
 
     for c in contours:  # filters targets and packages them
         rect = cv.minAreaRect(c)  # calculating rotated rectangle
@@ -310,27 +271,21 @@ while True:
 
     elapsed = time.time() - time_init  # time one loop takes
 
-    if NETWORK_TABLES_ON:
+    if SERIAL_ON:
+        total_area = 0
+        angle = 0
+
         if selected_goal:
-            for i in selected_goal:
-                sd.putNumber('left_area', selected_goal['left_area'])
-                sd.putNumber('right_area', selected_goal['right_area'])
-                sd.putNumber('total_area', selected_goal['total_area'])
-                sd.putNumber('difference_area', selected_goal['difference_area'])
-                sd.putNumber('x_offset', selected_goal['x_offset'])
-                sd.putNumber('p_screen', selected_goal['p_screen'])
-                sd.putNumber('offset', selected_goal['offset'])
-                sd.putNumber('angle', selected_goal['angle'])
-                sd.putNumber('center_x', selected_goal['center'][0])
-                sd.putNumber('center_y', selected_goal['center'][1])
-                sd.putNumber('gap_distance', selected_goal['gap_distance'])
-        sd.putNumber('time_stamp', elapsed)
-        sd.putNumber('loop_rate', 1 / elapsed)
+            total_area = selected_goal['total_area']
+            angle = selected_goal['angle']
+
+        data = "{0}|{1}\n".format(angle, total_area)
+
+        # print("Sent {0}".format(data))
+
+        ser.write(data.encode("ascii"))
+        ser.flush()
                 
     if STREAM_VISION:
         camera.putFrame(img)
 
-    # print(1 / elapsed)
-
-    # print("VISION UP, FRAMERATE: {0}".format(1 / elapsed))
-    # print(selected_goal['angle'])
